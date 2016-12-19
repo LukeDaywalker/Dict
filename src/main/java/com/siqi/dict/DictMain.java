@@ -65,7 +65,7 @@ public class DictMain {
 			System.out.print(str);
 			sb.append(str);
 		}
-		
+
 		//保存到data.dat
 		try {
 			FileWriter fw = new FileWriter(DATA_FILENAME);
