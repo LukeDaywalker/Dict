@@ -3,5 +3,6 @@
 *.iml
 build/
 dict/pages/
+dict/pagesBm8/
 .DS_Store/
 

@@ -89,7 +89,7 @@ public class DownloadThread extends Thread {
         long t1 = System.currentTimeMillis(); // 记录时间
 
         String filePath = String.format(DictMain.FILEPATH, unicode); // 文件名
-
+        String errFilePath = filePath + DictMain.ERROR;
         String word = new String(Character.toChars(unicode)); // 将unicode转换为数字
 
         boolean downloaded = false;
@@ -97,7 +97,21 @@ public class DownloadThread extends Thread {
         while (!downloaded && retryCnt < RETRY_MAX) {
             try {
                 String content = DownloadPage(word);
-                SaveToFile(filePath, content);
+                if (content.contains("<b>查无此汉字</b>") || content.contains("<p>&nbsp;&nbsp;&nbsp;&nbsp;您所访问的资源不存在:&nbsp;&nbsp;")) {
+                    System.err.println(word + ":查无此汉字");
+                    SaveToFile(errFilePath, content);
+                } else {
+                    if (content.contains("<title>康熙字典")) {
+                        SaveToFile(filePath, content);
+                    } else {
+                        System.out.println(word + ":获取失败");
+                        retryCnt++;
+                        threadCnt(-1);
+                        System.err.println(String.format("%s, %s, 下载失败！线程数目：%s 用时：%s", unicode,
+                                word, threadCnt(0), System.currentTimeMillis() - t1));
+                        return;
+                    }
+                }
                 downloaded = true;
 
                 threadCnt(-1);
@@ -106,6 +120,7 @@ public class DownloadThread extends Thread {
                                 - t1));
                 return;
             } catch (Exception e) {
+                System.out.println(e.toString());
                 retryCnt++;
             }
         }
