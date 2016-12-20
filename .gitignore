@@ -2,5 +2,6 @@
 .gradle/
 *.iml
 build/
+dict/pages/
 .DS_Store/
 
