@@ -35,6 +35,8 @@ public class DownloadThread extends Thread {
      * 当前线程数目
      */
     private static int threadCnt = 0;
+    private final String filePath;
+    private final String errFilePath;
 
     /**
      * 当前线程处理汉字的unicode编码
@@ -82,14 +84,15 @@ public class DownloadThread extends Thread {
 
         threadCnt(1);    //线程数量+1
         this.unicode = unicode;
+        this.filePath = String.format(DictMain.FILEPATH, unicode); // 文件名
+        this.errFilePath = filePath + DictMain.ERROR;
     }
 
     @Override
     public void run() {
         long t1 = System.currentTimeMillis(); // 记录时间
 
-        String filePath = String.format(DictMain.FILEPATH, unicode); // 文件名
-        String errFilePath = filePath + DictMain.ERROR;
+
         String word = new String(Character.toChars(unicode)); // 将unicode转换为数字
 
         boolean downloaded = false;
@@ -98,7 +101,8 @@ public class DownloadThread extends Thread {
             try {
                 String content = DownloadPage(word);
                 if (content.contains("<b>查无此汉字</b>") || content.contains("<p>&nbsp;&nbsp;&nbsp;&nbsp;您所访问的资源不存在:&nbsp;&nbsp;")) {
-                    System.err.println(word + ":查无此汉字");
+                    String str = String.format("%s, %s, 查无此汉字", unicode, word);
+                    System.err.println(str);
                     SaveToFile(errFilePath, content);
                 } else {
                     if (content.contains("<title>康熙字典")) {

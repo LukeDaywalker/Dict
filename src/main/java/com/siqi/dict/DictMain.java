@@ -1,9 +1,8 @@
 package com.siqi.dict;
 
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
+import com.util.TextUtils;
+
+import java.io.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -16,7 +15,7 @@ public class DictMain {
     /**
      * 网页保存路径
      */
-    public static final String SAVEPATH = "dict/pages/";
+    public static final String SAVEPATH = String.format("dict%spages%s", File.separatorChar, File.separatorChar);
     /**
      * 下载的汉字网页名称
      */
@@ -52,29 +51,37 @@ public class DictMain {
             String filePath = String.format(FILEPATH, i); // 文件名
             File file = new File(filePath);
             File file1 = new File(filePath + ERROR);
-            if (!file.exists() && !file1.exists()) {
+            if (!file.exists() /*&& !file1.exists()*/) {
                 new DownloadThread(i).start();
             }
         }
 
-//		//解析网页，得到拼音信息，并保存到data.dat
-//		StringBuffer sb = new StringBuffer();
-//		for (int i = UNICODE_MIN; i <= UNICODE_MAX; i++) {
-//			String word = new String(Character.toChars(i));
-//			String pinyin = getPinYinFromWebpageFile(String.format(FILEPATH, i));
-//			String str = String.format("%s,%s,%s\r\n", i,word,pinyin);
-//			System.out.print(str);
-//			sb.append(str);
-//		}
+//        //解析网页，得到拼音信息，并保存到data.dat
+//        StringBuffer sb = new StringBuffer();
+//        for (int i = UNICODE_MIN; i <= UNICODE_MAX; i++) {
+//            String word = new String(Character.toChars(i));
+//            String pinyin = getPinYinFromWebpageFile(String.format(FILEPATH, i));
+//            if (pinyin == null) {
+//                continue;
+//            }
+//            if (!TextUtils.isEmpty(pinyin)) {
+//                String str = String.format("%s,%s,%s\r\n", i, word, pinyin);
+//                System.out.print(str);
+//                sb.append(str);
+//            } else {
+//                String str = String.format("%s,%s,没有拼音", i, word);
+//                System.err.println(str);
+//            }
+//        }
 //
-//		//保存到data.dat
-//		try {
-//			FileWriter fw = new FileWriter(DATA_FILENAME);
-//			fw.write(sb.toString());
-//			fw.close();
-//		} catch (IOException e) {
-//			e.printStackTrace();
-//		}
+//        //保存到data.dat
+//        try {
+//            FileWriter fw = new FileWriter(DATA_FILENAME);
+//            fw.write(sb.toString());
+//            fw.close();
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
 
     }
 
@@ -92,6 +99,7 @@ public class DictMain {
     private static String getPinYinFromWebpageFile(String file) {
         try {
 
+            String result = "";
             char[] buff = new char[(int) new File(file).length()];
 
             FileReader reader = new FileReader(file);
@@ -99,11 +107,19 @@ public class DictMain {
             reader.close();
 
             String content = new String(buff);
-            // spf("yi1")
-            Matcher mat = Pattern.compile("(?<=spf\\(\")[a-z1-4]{0,100}",
+            // spz("yi1")
+//            Matcher mat = Pattern.compile("(?<=spz\\(\")[a-z1-4]{0,100}",
+//                    Pattern.CASE_INSENSITIVE).matcher(content);
+
+            // /z/pyjs/?py=lai4" target="_blank">lài</a><script>spz(
+            Matcher mat = Pattern.compile("(?<=/z/pyjs/\\?py=)([a-z1-4]{1,100})(.{3}target=\"_blank\">)(.{1,6})(</a><script>spz\\()",
                     Pattern.CASE_INSENSITIVE).matcher(content);
-            if (mat.find()) {
-                return mat.group();
+            while (mat.find()) {
+                String group = mat.group(1);
+                result += group + ",";
+            }
+            if (!TextUtils.isEmpty(result)) {
+                return result;
             }
             //<span class="dicpy">cal</span> spf("xin1")
             mat = Pattern.compile("(?<=class=\"dicpy\">)[a-z1-4]{0,100}",
@@ -111,6 +127,9 @@ public class DictMain {
             if (mat.find()) {
                 return mat.group();
             }
+        } catch (FileNotFoundException e) {
+//            e.printStackTrace();
+            return null;
         } catch (Exception e) {
             e.printStackTrace();
         }
