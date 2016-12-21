@@ -107,6 +107,9 @@ public class DownloadThread extends Thread {
                 } else {
                     if (content.contains("<title>康熙字典")) {
                         SaveToFile(filePath, content);
+                        System.out.println(String.format("%s, %s, 下载成功！线程数目：%s 用时：%s",
+                                unicode, word, threadCnt(0), System.currentTimeMillis()
+                                        - t1));
                     } else {
                         System.out.println(word + ":获取失败");
                         retryCnt++;
@@ -119,12 +122,10 @@ public class DownloadThread extends Thread {
                 downloaded = true;
 
                 threadCnt(-1);
-                System.out.println(String.format("%s, %s, 下载成功！线程数目：%s 用时：%s",
-                        unicode, word, threadCnt(0), System.currentTimeMillis()
-                                - t1));
                 return;
             } catch (Exception e) {
-                System.out.println(e.toString());
+                String str = String.format("%s, %s, %s", unicode, word, e.toString());
+                System.out.println(str);
                 retryCnt++;
             }
         }
