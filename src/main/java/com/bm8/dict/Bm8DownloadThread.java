@@ -32,6 +32,8 @@ public class Bm8DownloadThread extends Thread {
      * 当前线程数目
      */
     private static int threadCnt = 0;
+    private final String filePath;
+    private final String errFilePath;
 
     /**
      * 当前线程处理汉字的unicode编码
@@ -79,14 +81,15 @@ public class Bm8DownloadThread extends Thread {
 
         threadCnt(1);    //线程数量+1
         this.unicode = unicode;
+        this.filePath = String.format(Bm8DictMain.FILEPATH, unicode); // 文件名
+        this.errFilePath = filePath + Bm8DictMain.ERROR;
     }
 
     @Override
     public void run() {
         long t1 = System.currentTimeMillis(); // 记录时间
 
-        String filePath = String.format(Bm8DictMain.FILEPATH, unicode); // 文件名
-        String errFilePath = filePath + Bm8DictMain.ERROR;
+
         String word = new String(Character.toChars(unicode)); // 将unicode转换为数字
 
         boolean downloaded = false;
@@ -99,22 +102,26 @@ public class Bm8DownloadThread extends Thread {
                     if (!content.contains("<title>网站防火墙</title>")) {
                         if (content.contains("<a HREF=\"/\">here</a>")) {
                             SaveToFile(errFilePath, content);
+                            String s = String.format("%s, %s, 重定向", unicode, word);
+                            System.err.println(s);
                         } else {
                             SaveToFile(filePath, content);
+                            System.out.println(String.format("%s, %s, 下载成功！线程数目：%s 用时：%s",
+                                    unicode, word, threadCnt(0), System.currentTimeMillis()
+                                            - t1));
                         }
                         downloaded = true;
 
                         threadCnt(-1);
-                        System.out.println(String.format("%s, %s, 下载成功！线程数目：%s 用时：%s",
-                                unicode, word, threadCnt(0), System.currentTimeMillis()
-                                        - t1));
                         return;
                     } else {
-                        System.out.println("网站防火墙");
+                        String s = String.format("%s, %s, 网站防火墙", unicode, word);
+                        System.out.println(s);
                         retryCnt++;
                     }
                 } else {
-                    System.out.println("JumpSelf()");
+                    String s = String.format("%s, %s, JumpSelf()", unicode, word);
+                    System.out.println(s);
                     retryCnt++;
                 }
             } catch (Exception e) {

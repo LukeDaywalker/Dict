@@ -1,8 +1,12 @@
 package com.siqi.dict;
 
 import com.util.TextUtils;
+import org.sqlite.SQLiteException;
 
 import java.io.*;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -36,6 +40,8 @@ public class DictMain {
      */
     public static final int UNICODE_MAX = 0x9FFF;
 
+    private static List<Word> mWordList = new ArrayList<Word>();
+
     /**
      * 准备工作:
      * 1.从汉典网站下载所有汉字的页面，注意，不要在eclipse中打开保存页面的文件夹，
@@ -61,10 +67,11 @@ public class DictMain {
         for (int i = UNICODE_MIN; i <= UNICODE_MAX; i++) {
             String wordStr = new String(Character.toChars(i));
             Word word = getPinYinFromWebpageFile(wordStr, String.format(FILEPATH, i));
-            if (word == null) {
+            if (word == null || word.getPy() == null) {
                 continue;
             }
             if (!TextUtils.isEmpty(word.getPy())) {
+                mWordList.add(word);
                 String str = String.format("%s,%s,%s\r\n", i, wordStr, word.getPy());
                 System.out.print(str);
                 sb.append(str);
@@ -74,15 +81,67 @@ public class DictMain {
             }
         }
 
-        //保存到data.dat
+//        //保存到data.dat
+//        try {
+//            FileWriter fw = new FileWriter(DATA_FILENAME);
+//            fw.write(sb.toString());
+//            fw.close();
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+
+        saveKxWord(mWordList);
+
+    }
+
+    private static void saveKxWord(List<Word> wordList) {
         try {
-            FileWriter fw = new FileWriter(DATA_FILENAME);
-            fw.write(sb.toString());
-            fw.close();
-        } catch (IOException e) {
+            //连接SQLite的JDBC
+
+            Class.forName("org.sqlite.JDBC");
+
+            //建立一个数据库名comm_word.db的连接，如果不存在就在当前目录下创建之
+
+            Connection conn = DriverManager.getConnection("jdbc:sqlite:kx_word.db");
+
+            Statement stat = conn.createStatement();
+
+            stat.executeUpdate("create table IF NOT EXISTS  word (word  VARCHAR UNIQUE, jt  VARCHAR, ft  VARCHAR, cc1 INTEGER, cc2 INTEGER, tc INTEGER, ty INTEGER, py  VARCHAR, tone  VARCHAR, pyt  VARCHAR, duoYin INTEGER, kxWord  VARCHAR, wordSet  VARCHAR, radical  VARCHAR, kxAllStork INTEGER, kxOtherStork INTEGER);");
+            PreparedStatement prep = conn.prepareStatement(
+                    "replace into word values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);");
+
+            for (Word word : wordList) {
+                prep.setString(1, word.getWord());
+                prep.setString(2, word.getJt());
+                prep.setString(3, word.getFt());
+                prep.setInt(4, word.getCc1());
+                prep.setInt(5, word.getCc2());
+                prep.setInt(6, word.getTc());
+                prep.setInt(7, word.getTy());
+                prep.setString(8, word.getPy());
+                prep.setString(9, word.getTone());
+                prep.setString(10, word.getPyt());
+                prep.setInt(11, word.getDuoYin());
+                prep.setString(12, word.getKxWord());
+                prep.setString(13, word.getWordSet());
+                prep.setString(14, word.getRadical());
+                prep.setInt(15, word.getKxAllStork());
+                prep.setInt(16, word.getKxOtherStork());
+                prep.addBatch();
+            }
+
+            conn.setAutoCommit(false);
+            prep.executeBatch();
+            conn.setAutoCommit(true);
+
+            conn.close();
+        } catch (SQLiteException e) {
+            e.printStackTrace();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
             e.printStackTrace();
         }
-
     }
 
     public static void main(String[] args) {
@@ -148,29 +207,29 @@ public class DictMain {
 
             String ftArea = "";
             //<span id="ft"><a href="/z/29/js/9DBF.htm" target="_blank">鶿</a> <a href="/z/29/js/9DC0.htm" target="_blank">鷀</a> </span>
-            mat = Pattern.compile("<span id=\"ft\">(<a .* target=\"_blank\">.</a> )</span>",
+            mat = Pattern.compile("<span id=\"ft\">((<a href=\"[\\S]*\" target=\"_blank\">.</a> )+)</span>",
                     Pattern.CASE_INSENSITIVE).matcher(info);
             if (mat.find()) {
                 //繁体区域
                 ftArea = mat.group(1);
             }
-            String ft = "";//繁体字
-            if (!TextUtils.isEmpty(ftArea)) {
-                //"_blank">幺</a>
-                mat = Pattern.compile("\"_blank\">(.)</a>",
-                        Pattern.CASE_INSENSITIVE).matcher(ftArea);
-                while (mat.find()) {
-                    //繁体
-                    String group = mat.group(1);
-                    ft += group + ",";
-                }
+            String ft = getAreaItem(ftArea);//繁体字
+
+            String jtArea = "";
+            //<span id="jt"><a href="/z/1b/js/6653.htm" target="_blank">晓</a> </span>
+            mat = Pattern.compile("<span id=\"jt\">((<a href=\"[\\S]*\" target=\"_blank\">.</a> )+)</span>",
+                    Pattern.CASE_INSENSITIVE).matcher(info);
+            if (mat.find()) {
+                //简体区域
+                jtArea = mat.group(1);
             }
+            String jt = getAreaItem(jtArea);//简体字
 
 
             String py = "";//拼音
             String tone = "";//声调
             String pyt = "";//拼音带声调
-            int duoYin = 0;
+            int duoYin = 0;//是否多音，>0为多音字
             // /z/pyjs/?py=lai4" target="_blank">lài</a><script>spz(
             mat = Pattern.compile("(?<=/z/pyjs/\\?py=)([a-z]{1,6})([0-4])\" target=\"_blank\">(.{1,6})</a><script>spz\\(",
                     Pattern.CASE_INSENSITIVE).matcher(info);
@@ -184,7 +243,7 @@ public class DictMain {
 
 
             String kxWord = "";//对应的康熙字
-            String set = "";//集合
+            String wordSet = "";//集合
             String radical = "";//部首
             /**
              * >【<a href="/z/kxzd/?kxzm=%E6%9C%AA%E9%9B%86%E4%B8%8B" target="_blank">未集下</a>】【<a href="/z/kxzd/?kxzm=%E6%9C%AA%E9%9B%86%E4%B8%8B&kxbs=%E8%88%8C" target="_blank">舌部</a>】 釬
@@ -192,7 +251,7 @@ public class DictMain {
             mat = Pattern.compile(">【<a href=\"[\\S]*\" target=\"_blank\">(.{3,6})</a>】【<a href=\"[\\S]*\" target=\"_blank\">(.{2})</a>】 (.)",
                     Pattern.CASE_INSENSITIVE).matcher(kangXi);
             if (mat.find()) {
-                set = mat.group(1);
+                wordSet = mat.group(1);
                 radical = mat.group(2);
                 kxWord = mat.group(3);
             }
@@ -211,7 +270,7 @@ public class DictMain {
                 kxOtherStork = Integer.parseInt(mat.group(2));
             }
             if (kxAllStork > 0) {
-                return new Word(word, ft, cc1, cc2, tc, ty, py, tone, pyt, kxWord, set, radical, kxAllStork, kxOtherStork);
+                return new Word(word, jt, ft, cc1, cc2, tc, ty, py, tone, pyt, duoYin, kxWord, wordSet, radical, kxAllStork, kxOtherStork);
             }
 
             if (!TextUtils.isEmpty(kxWord)) {
@@ -220,7 +279,7 @@ public class DictMain {
                     kxWord = kxStork.getKxWord();
                     kxAllStork = kxStork.getAllStork();
                     kxOtherStork = kxStork.getOtherStork();
-                    return new Word(word, ft, cc1, cc2, tc, ty, py, tone, pyt, kxWord, set, radical, kxAllStork, kxOtherStork);
+                    return new Word(word, jt, ft, cc1, cc2, tc, ty, py, tone, pyt, duoYin, kxWord, wordSet, radical, kxAllStork, kxOtherStork);
                 }
             }
 
@@ -231,8 +290,23 @@ public class DictMain {
             e.printStackTrace();
         }
 
-        return null;
+        return new Word("");
 
+    }
+
+    private static String getAreaItem(String jtArea) {
+        String item = "";//简体字or繁体字
+        if (!TextUtils.isEmpty(jtArea)) {
+            //"_blank">钟</a>
+            Matcher mat = Pattern.compile("\"_blank\">(.)</a>",
+                    Pattern.CASE_INSENSITIVE).matcher(jtArea);
+            while (mat.find()) {
+                //简体or繁体
+                String group = mat.group(1);
+                item += group + ",";
+            }
+        }
+        return item;
     }
 
     private static KXStork getStork(String kxWord) throws FileNotFoundException, Exception {

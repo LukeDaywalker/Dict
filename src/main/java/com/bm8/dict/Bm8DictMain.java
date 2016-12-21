@@ -16,7 +16,7 @@ public class Bm8DictMain {
     /**
      * 网页保存路径
      */
-    public static final String SAVEPATH = "dict/pagesBm8/";
+    public static final String SAVEPATH = String.format("dict%spagesBm8%s", File.separatorChar, File.separatorChar);
     /**
      * 下载的汉字网页名称
      */
@@ -53,7 +53,7 @@ public class Bm8DictMain {
             String filePath = String.format(FILEPATH, i); // 文件名
             File file = new File(filePath);
             File file1 = new File(filePath + ERROR);
-            if (!file.exists() && !file1.exists()) {
+            if (!file.exists() /*&& !file1.exists()*/) {
                 new Bm8DownloadThread(i).start();
             }
         }
