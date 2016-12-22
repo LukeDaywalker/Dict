@@ -1,9 +1,13 @@
 package com.bm8.dict;
 
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
+import com.siqi.dict.Word;
+import com.util.TextUtils;
+import org.sqlite.SQLiteException;
+
+import java.io.*;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -38,6 +42,8 @@ public class Bm8DictMain {
      */
     public static final int UNICODE_MAX = 0x9FFF;
 
+    private static final List<FiveElements> mFiveElementList = new ArrayList<FiveElements>();
+
     /**
      * 准备工作:
      * 1.从汉典网站下载所有汉字的页面，注意，不要在eclipse中打开保存页面的文件夹，
@@ -47,36 +53,77 @@ public class Bm8DictMain {
      * 4.可以使用com.siqi.pinyin.PinYin.java了
      */
     static {
-        // 下载网页
+//        // 下载网页
+//        for (int i = UNICODE_MIN; i <= UNICODE_MAX; i++) {
+//            // 检查是否已经存在
+//            String filePath = String.format(FILEPATH, i); // 文件名
+//            File file = new File(filePath);
+//            File file1 = new File(filePath + ERROR);
+//            if (!file.exists() /*&& !file1.exists()*/) {
+//                new Bm8DownloadThread(i).start();
+//            }
+//        }
+
         for (int i = UNICODE_MIN; i <= UNICODE_MAX; i++) {
-            // 检查是否已经存在
-            String filePath = String.format(FILEPATH, i); // 文件名
-            File file = new File(filePath);
-            File file1 = new File(filePath + ERROR);
-            if (!file.exists() /*&& !file1.exists()*/) {
-                new Bm8DownloadThread(i).start();
+            String word = new String(Character.toChars(i));
+            FiveElements fiveElements = getPinYinFromWebpageFile(word, String.format(FILEPATH, i));
+            if (fiveElements == null) {
+                continue;
+            }
+            String elements = fiveElements.getFiveElements();
+            if (elements == null) {
+                continue;
+            }
+            if (!TextUtils.isEmpty(elements)) {
+                mFiveElementList.add(fiveElements);
+                String str = String.format("%s,%s,%s\r\n", i, word, elements);
+                System.out.print(str);
+            } else {
+                String str = String.format("%s,%s,没有拼音", i, word);
+                System.err.println(str);
             }
         }
 
-//		//解析网页，得到拼音信息，并保存到data.dat
-//		StringBuffer sb = new StringBuffer();
-//		for (int i = UNICODE_MIN; i <= UNICODE_MAX; i++) {
-//			String word = new String(Character.toChars(i));
-//			String pinyin = getPinYinFromWebpageFile(String.format(FILEPATH, i));
-//			String str = String.format("%s,%s,%s\r\n", i,word,pinyin);
-//			System.out.print(str);
-//			sb.append(str);
-//		}
-//
-//		//保存到data.dat
-//		try {
-//			FileWriter fw = new FileWriter(DATA_FILENAME);
-//			fw.write(sb.toString());
-//			fw.close();
-//		} catch (IOException e) {
-//			e.printStackTrace();
-//		}
+        saveFiveElements(mFiveElementList);
 
+    }
+
+    private static void saveFiveElements(List<FiveElements> fiveElementList) {
+        try {
+            //连接SQLite的JDBC
+
+            Class.forName("org.sqlite.JDBC");
+
+            //建立一个数据库名comm_word.db的连接，如果不存在就在当前目录下创建之
+
+            Connection conn = DriverManager.getConnection("jdbc:sqlite:union.db");
+
+            Statement stat = conn.createStatement();
+
+            stat.executeUpdate("create table IF NOT EXISTS  five_elements (word  VARCHAR UNIQUE,  isSurname INTEGER,  fiveElements  VARCHAR, goodOrIll  VARCHAR);");
+            PreparedStatement prep = conn.prepareStatement(
+                    "replace into five_elements values (?, ?, ?, ?);");
+
+            for (FiveElements word : fiveElementList) {
+                prep.setString(1, word.getWord());
+                prep.setInt(2, word.getIsSurname());
+                prep.setString(3, word.getFiveElements());
+                prep.setString(4, word.getGoodOrIll());
+                prep.addBatch();
+            }
+
+            conn.setAutoCommit(false);
+            prep.executeBatch();
+            conn.setAutoCommit(true);
+
+            conn.close();
+        } catch (SQLiteException e) {
+            e.printStackTrace();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
     }
 
     public static void main(String[] args) {
@@ -90,33 +137,40 @@ public class Bm8DictMain {
      * @param file
      * @return
      */
-    private static String getPinYinFromWebpageFile(String file) {
+    private static FiveElements getPinYinFromWebpageFile(String word, String file) {
         try {
 
             char[] buff = new char[(int) new File(file).length()];
 
-            FileReader reader = new FileReader(file);
+            File f = new File(file);
+            InputStreamReader read = new InputStreamReader(new FileInputStream(f), "GBK");
+            BufferedReader reader = new BufferedReader(read);
+
             reader.read(buff);
             reader.close();
 
             String content = new String(buff);
-            // spf("yi1")
-            Matcher mat = Pattern.compile("(?<=spf\\(\")[a-z1-4]{0,100}",
+
+            int isSurname = 0;//是否是姓氏
+            String fiveElements = "";//五行
+            String goodOrIll = "";//凶吉
+            Matcher mat = Pattern.compile("<td>拼音：[\\s\\S]*五行属性</strong>：(.)</td>[\\s\\S]*<td>吉凶：(.)</td>",
                     Pattern.CASE_INSENSITIVE).matcher(content);
             if (mat.find()) {
-                return mat.group();
+                String info = mat.group(0);
+                isSurname = info.contains("(姓氏)") ? 1 : 0;
+                fiveElements = mat.group(1);
+                goodOrIll = mat.group(2);
+                return new FiveElements(word, isSurname, fiveElements, goodOrIll);
             }
-            //<span class="dicpy">cal</span> spf("xin1")
-            mat = Pattern.compile("(?<=class=\"dicpy\">)[a-z1-4]{0,100}",
-                    Pattern.CASE_INSENSITIVE).matcher(content);
-            if (mat.find()) {
-                return mat.group();
-            }
+        } catch (FileNotFoundException e) {
+//            e.printStackTrace();
+            return null;
         } catch (Exception e) {
             e.printStackTrace();
         }
 
-        return "";
+        return new FiveElements("");
 
     }
 }

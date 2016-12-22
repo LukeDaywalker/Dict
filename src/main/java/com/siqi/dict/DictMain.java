@@ -62,8 +62,6 @@ public class DictMain {
 //            }
 //        }
 
-        //解析网页，得到拼音信息，并保存到data.dat
-        StringBuffer sb = new StringBuffer();
         for (int i = UNICODE_MIN; i <= UNICODE_MAX; i++) {
             String wordStr = new String(Character.toChars(i));
             Word word = getPinYinFromWebpageFile(wordStr, String.format(FILEPATH, i));
@@ -74,21 +72,12 @@ public class DictMain {
                 mWordList.add(word);
                 String str = String.format("%s,%s,%s\r\n", i, wordStr, word.getPy());
                 System.out.print(str);
-                sb.append(str);
             } else {
                 String str = String.format("%s,%s,没有拼音", i, wordStr);
                 System.err.println(str);
             }
         }
 
-//        //保存到data.dat
-//        try {
-//            FileWriter fw = new FileWriter(DATA_FILENAME);
-//            fw.write(sb.toString());
-//            fw.close();
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
 
         saveKxWord(mWordList);
 
@@ -102,13 +91,13 @@ public class DictMain {
 
             //建立一个数据库名comm_word.db的连接，如果不存在就在当前目录下创建之
 
-            Connection conn = DriverManager.getConnection("jdbc:sqlite:kx_word.db");
+            Connection conn = DriverManager.getConnection("jdbc:sqlite:union.db");
 
             Statement stat = conn.createStatement();
 
-            stat.executeUpdate("create table IF NOT EXISTS  word (word  VARCHAR UNIQUE, jt  VARCHAR, ft  VARCHAR, cc1 INTEGER, cc2 INTEGER, tc INTEGER, ty INTEGER, py  VARCHAR, tone  VARCHAR, pyt  VARCHAR, duoYin INTEGER, kxWord  VARCHAR, wordSet  VARCHAR, radical  VARCHAR, kxAllStork INTEGER, kxOtherStork INTEGER);");
+            stat.executeUpdate("create table IF NOT EXISTS  kx_word (word  VARCHAR UNIQUE, jt  VARCHAR, ft  VARCHAR, cc1 INTEGER, cc2 INTEGER, tc INTEGER, ty INTEGER, py  VARCHAR, tone  VARCHAR, pyt  VARCHAR, duoYin INTEGER, kxWord  VARCHAR, wordSet  VARCHAR, radical  VARCHAR, kxAllStork INTEGER, kxOtherStork INTEGER);");
             PreparedStatement prep = conn.prepareStatement(
-                    "replace into word values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);");
+                    "replace into kx_word values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);");
 
             for (Word word : wordList) {
                 prep.setString(1, word.getWord());
@@ -158,7 +147,6 @@ public class DictMain {
     private static Word getPinYinFromWebpageFile(String word, String file) {
         try {
 
-            String result = "";
             char[] buff = new char[(int) new File(file).length()];
 
             FileReader reader = new FileReader(file);

@@ -7,7 +7,7 @@ import java.util.Properties;
  */
 public class Util {
     public static boolean inHome() {
-        return true;
+        return false;
     }
 
     public static void initHttpProxy() {
