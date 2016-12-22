@@ -223,9 +223,9 @@ public class DictMain {
                     Pattern.CASE_INSENSITIVE).matcher(info);
             while (mat.find()) {
                 //1 拼音 2 声调 3 拼音带声调
-                py += mat.group(1) + ",";
-                tone += mat.group(2) + ",";
-                pyt += mat.group(3) + ",";
+                py = TextUtils.connectStr(py, mat.group(1));
+                tone = TextUtils.connectStr(tone, mat.group(2));
+                pyt = TextUtils.connectStr(pyt, mat.group(3));
                 duoYin++;
             }
 
@@ -282,6 +282,7 @@ public class DictMain {
 
     }
 
+
     private static String getAreaItem(String jtArea) {
         String item = "";//简体字or繁体字
         if (!TextUtils.isEmpty(jtArea)) {
@@ -291,7 +292,7 @@ public class DictMain {
             while (mat.find()) {
                 //简体or繁体
                 String group = mat.group(1);
-                item += group + ",";
+                item = TextUtils.connectStr(item, group);
             }
         }
         return item;

@@ -17,4 +17,11 @@ public class TextUtils {
         else
             return false;
     }
+
+    public static String connectStr(String oldStr, String newStr) {
+        if (isEmpty(oldStr)) {
+            return newStr;
+        }
+        return oldStr + "," + newStr;
+    }
 }
