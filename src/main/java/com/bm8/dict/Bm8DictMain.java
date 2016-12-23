@@ -1,6 +1,5 @@
 package com.bm8.dict;
 
-import com.siqi.dict.Word;
 import com.util.TextUtils;
 import org.sqlite.SQLiteException;
 
@@ -66,7 +65,7 @@ public class Bm8DictMain {
 
         for (int i = UNICODE_MIN; i <= UNICODE_MAX; i++) {
             String word = new String(Character.toChars(i));
-            FiveElements fiveElements = getPinYinFromWebpageFile(word, String.format(FILEPATH, i));
+            FiveElements fiveElements = getFiveElementsFromWebpageFile(word, String.format(FILEPATH, i));
             if (fiveElements == null) {
                 continue;
             }
@@ -137,7 +136,7 @@ public class Bm8DictMain {
      * @param file
      * @return
      */
-    private static FiveElements getPinYinFromWebpageFile(String word, String file) {
+    private static FiveElements getFiveElementsFromWebpageFile(String word, String file) {
         try {
 
             char[] buff = new char[(int) new File(file).length()];

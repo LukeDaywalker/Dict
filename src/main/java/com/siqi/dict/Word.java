@@ -15,6 +15,12 @@ public class Word {
     private final String tone;//声调
     private final String pyt;//拼音带声调
     private final int duoYin;//是否多音，>0为多音（多音个数）
+
+    private final String shengMu;//声母
+    private final String yunTou;//韵头
+    private final String yunFu;//韵腹
+    private final String yunWei;//韵尾
+
     private final String kxWord;//对应的康熙字
     private final String wordSet;//集合
     private final String radical;//部首
@@ -35,6 +41,12 @@ public class Word {
         this.tone = "";
         this.pyt = "";
         this.duoYin = 0;
+
+        this.shengMu = "";//声母
+        this.yunTou = "";//韵头
+        this.yunFu = "";//韵腹
+        this.yunWei = "";//韵尾
+
         this.kxWord = "";
         this.wordSet = "";
         this.radical = "";
@@ -42,7 +54,10 @@ public class Word {
         this.kxOtherStork = 0;
     }
 
-    public Word(String word, String jt, String ft, int cc1, int cc2, int tc, int ty, String py, String tone, String pyt, int duoYin, String kxWord, String wordSet, String radical, int kxAllStork, int kxOtherStork) {
+    public Word(String word, String jt, String ft, int cc1, int cc2, int tc, int ty,
+                String py, String tone, String pyt, int duoYin,
+                String shengMu, String yunTou, String yunFu, String yunWei,
+                String kxWord, String wordSet, String radical, int kxAllStork, int kxOtherStork) {
         this.word = word;
         this.jt = jt;
         this.ft = ft;
@@ -54,6 +69,12 @@ public class Word {
         this.tone = tone;
         this.pyt = pyt;
         this.duoYin = duoYin;
+
+        this.shengMu = shengMu;
+        this.yunTou = yunTou;
+        this.yunFu = yunFu;
+        this.yunWei = yunWei;
+
         this.kxWord = kxWord;
         this.wordSet = wordSet;
         this.radical = radical;
@@ -103,6 +124,22 @@ public class Word {
 
     public int getDuoYin() {
         return duoYin;
+    }
+
+    public String getShengMu() {
+        return shengMu;
+    }
+
+    public String getYunTou() {
+        return yunTou;
+    }
+
+    public String getYunFu() {
+        return yunFu;
+    }
+
+    public String getYunWei() {
+        return yunWei;
     }
 
     public String getKxWord() {

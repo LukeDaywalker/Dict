@@ -15,6 +15,12 @@ public class UnionWord {
     private final String tone;//声调
     private final String pyt;//拼音带声调
     private final int duoYin;//是否多音，>0为多音（多音个数）
+
+    private final String shengMu;//声母
+    private final String yunTou;//韵头
+    private final String yunFu;//韵腹
+    private final String yunWei;//韵尾
+
     private final String kxWord;//对应的康熙字
     private final String wordSet;//集合
     private final String radical;//部首
@@ -24,7 +30,10 @@ public class UnionWord {
     private final String fiveElements;//五行
     private final String goodOrIll;//凶吉
 
-    public UnionWord(String word, String jt, String ft, int cc1, int cc2, int tc, int ty, String py, String tone, String pyt, int duoYin, String kxWord, String wordSet, String radical, int kxAllStork, int kxOtherStork, int isSurname, String fiveElements, String goodOrIll) {
+    public UnionWord(String word, String jt, String ft, int cc1, int cc2, int tc, int ty,
+                     String py, String tone, String pyt, int duoYin,
+                     String shengMu, String yunTou, String yunFu, String yunWei,
+                     String kxWord, String wordSet, String radical, int kxAllStork, int kxOtherStork, int isSurname, String fiveElements, String goodOrIll) {
         this.word = word;
         this.jt = jt;
         this.ft = ft;
@@ -36,6 +45,12 @@ public class UnionWord {
         this.tone = tone;
         this.pyt = pyt;
         this.duoYin = duoYin;
+
+        this.shengMu = shengMu;
+        this.yunTou = yunTou;
+        this.yunFu = yunFu;
+        this.yunWei = yunWei;
+
         this.kxWord = kxWord;
         this.wordSet = wordSet;
         this.radical = radical;
@@ -88,6 +103,22 @@ public class UnionWord {
 
     public int getDuoYin() {
         return duoYin;
+    }
+
+    public String getShengMu() {
+        return shengMu;
+    }
+
+    public String getYunTou() {
+        return yunTou;
+    }
+
+    public String getYunFu() {
+        return yunFu;
+    }
+
+    public String getYunWei() {
+        return yunWei;
     }
 
     public String getKxWord() {

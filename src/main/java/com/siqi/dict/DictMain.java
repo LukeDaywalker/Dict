@@ -3,9 +3,12 @@ package com.siqi.dict;
 import com.util.TextUtils;
 import org.sqlite.SQLiteException;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -16,6 +19,10 @@ import java.util.regex.Pattern;
  * @author siqi
  */
 public class DictMain {
+    private static final List<String> shengMuFuList = Arrays.asList("zh", "ch", "sh");
+    private static final List<String> shengMuList = Arrays.asList("b", "p", "m", "f", "d", "t", "n", "l", "g", "k", "h", "j", "q", "x", "z", "c", "s", "y", "w", "r");
+    private static final List<String> yunMuList = Arrays.asList("a", " o", "e", " i", "u");
+
     /**
      * 网页保存路径
      */
@@ -64,7 +71,7 @@ public class DictMain {
 
         for (int i = UNICODE_MIN; i <= UNICODE_MAX; i++) {
             String wordStr = new String(Character.toChars(i));
-            Word word = getPinYinFromWebpageFile(wordStr, String.format(FILEPATH, i));
+            Word word = getWordFromWebpageFile(wordStr, String.format(FILEPATH, i));
             if (word == null || word.getPy() == null) {
                 continue;
             }
@@ -95,9 +102,12 @@ public class DictMain {
 
             Statement stat = conn.createStatement();
 
-            stat.executeUpdate("create table IF NOT EXISTS  kx_word (word  VARCHAR UNIQUE, jt  VARCHAR, ft  VARCHAR, cc1 INTEGER, cc2 INTEGER, tc INTEGER, ty INTEGER, py  VARCHAR, tone  VARCHAR, pyt  VARCHAR, duoYin INTEGER, kxWord  VARCHAR, wordSet  VARCHAR, radical  VARCHAR, kxAllStork INTEGER, kxOtherStork INTEGER);");
+            stat.executeUpdate("create table IF NOT EXISTS  kx_word (word  VARCHAR UNIQUE, jt  VARCHAR, ft  VARCHAR, cc1 INTEGER, cc2 INTEGER, tc INTEGER, ty INTEGER," +
+                    " py  VARCHAR, tone  VARCHAR, pyt  VARCHAR, duoYin INTEGER," +
+                    " shengMu  VARCHAR,yunTou  VARCHAR,yunFu  VARCHAR,yunWei  VARCHAR,"+
+                    " kxWord  VARCHAR, wordSet  VARCHAR, radical  VARCHAR, kxAllStork INTEGER, kxOtherStork INTEGER);");
             PreparedStatement prep = conn.prepareStatement(
-                    "replace into kx_word values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);");
+                    "replace into kx_word values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);");
 
             for (Word word : wordList) {
                 prep.setString(1, word.getWord());
@@ -111,11 +121,17 @@ public class DictMain {
                 prep.setString(9, word.getTone());
                 prep.setString(10, word.getPyt());
                 prep.setInt(11, word.getDuoYin());
-                prep.setString(12, word.getKxWord());
-                prep.setString(13, word.getWordSet());
-                prep.setString(14, word.getRadical());
-                prep.setInt(15, word.getKxAllStork());
-                prep.setInt(16, word.getKxOtherStork());
+
+                prep.setString(12, word.getShengMu());
+                prep.setString(13, word.getYunTou());
+                prep.setString(14, word.getYunFu());
+                prep.setString(15, word.getYunWei());
+
+                prep.setString(16, word.getKxWord());
+                prep.setString(17, word.getWordSet());
+                prep.setString(18, word.getRadical());
+                prep.setInt(19, word.getKxAllStork());
+                prep.setInt(20, word.getKxOtherStork());
                 prep.addBatch();
             }
 
@@ -144,7 +160,7 @@ public class DictMain {
      * @param file
      * @return
      */
-    private static Word getPinYinFromWebpageFile(String word, String file) {
+    private static Word getWordFromWebpageFile(String word, String file) {
         try {
 
             char[] buff = new char[(int) new File(file).length()];
@@ -218,15 +234,173 @@ public class DictMain {
             String tone = "";//声调
             String pyt = "";//拼音带声调
             int duoYin = 0;//是否多音，>0为多音字
+
+
+            String shengMu = "";//声母
+            String yunTou = "";//韵头
+            String yunFu = "";//韵腹
+            String yunWei = "";//韵尾
+
             // /z/pyjs/?py=lai4" target="_blank">lài</a><script>spz(
             mat = Pattern.compile("(?<=/z/pyjs/\\?py=)([a-z]{1,6})([0-4])\" target=\"_blank\">(.{1,6})</a><script>spz\\(",
                     Pattern.CASE_INSENSITIVE).matcher(info);
             while (mat.find()) {
                 //1 拼音 2 声调 3 拼音带声调
-                py = TextUtils.connectStr(py, mat.group(1));
+                String pinYin = mat.group(1);
+                py = TextUtils.connectStr(py, pinYin);
                 tone = TextUtils.connectStr(tone, mat.group(2));
                 pyt = TextUtils.connectStr(pyt, mat.group(3));
                 duoYin++;
+
+                String sm = "";//声母
+                String yt = "";//韵头
+                String yf = "";//韵腹
+                String yw = "";//韵尾
+                if (pinYin.length() > 1) {
+                    String start = pinYin.substring(0, 2);
+                    if (shengMuFuList.contains(start)) {
+                        sm = start;
+                    } else {
+                        start = pinYin.substring(0, 1);
+                        if (shengMuList.contains(start)) {
+                            sm = start;
+                        }
+                    }
+                    if (pinYin.endsWith("ng")) {
+                        yw = "ng";
+                        if (pinYin.length() == 2) {
+                            sm = "";
+                        }
+                    }
+                    if (pinYin.endsWith("n")) {
+                        yw = "n";
+                    }
+                    if (pinYin.endsWith("m")) {
+                        yw = "m";
+                    }
+                    if (pinYin.contains("a")) {
+                        yf = "a";
+                    }
+                    if (pinYin.contains("e")) {
+                        yf = "e";
+                    }
+                    if (pinYin.contains("i")) {
+                        yf = "i";
+                    }
+                    if (pinYin.contains("o")) {
+                        yf = "o";
+                    }
+                    if (pinYin.contains("u")) {
+                        yf = "u";
+                    }
+                    if (pinYin.contains("v")) {
+                        yf = "v";
+                    }
+                    if (pinYin.contains("ia")) {
+                        yt = "i";
+                        yf = "a";
+                    }
+                    if (pinYin.endsWith("ai")) {
+                        yf = "a";
+                        yw = "i";
+                    }
+                    if (pinYin.endsWith("an")) {
+                        yf = "a";
+                        yw = "n";
+                    }
+                    if (pinYin.endsWith("ang")) {
+                        yf = "a";
+                        yw = "ng";
+                    }
+                    if (pinYin.endsWith("ao")) {
+                        yf = "a";
+                        yw = "o";
+                    }
+                    if (pinYin.endsWith("ei")) {
+                        yf = "e";
+                        yw = "i";
+                    }
+                    if (pinYin.endsWith("en")) {
+                        yf = "e";
+                        yw = "n";
+                    }
+                    if (pinYin.endsWith("eng")) {
+                        yf = "e";
+                        yw = "ng";
+                    }
+                    if (pinYin.endsWith("er")) {
+                        yf = "e";
+                        yw = "r";
+                    }
+                    if (pinYin.endsWith("ia")) {
+                        yt = "i";
+                        yf = "a";
+                    }
+                    if (pinYin.endsWith("ie")) {
+                        yt = "i";
+                        yf = "e";
+                    }
+                    if (pinYin.endsWith("iong")) {
+                        yt = "i";
+                        yf = "o";
+                        yw = "ng";
+                    }
+                    if (pinYin.endsWith("iu")) {
+                        yt = "i";
+                        yf = "u";
+                    }
+                    if (pinYin.endsWith("ou")) {
+                        yf = "o";
+                        yw = "u";
+                    }
+                    if (pinYin.contains("ua")) {
+                        yt = "u";
+                        yf = "a";
+                    }
+                    if (pinYin.endsWith("ue")) {
+                        yt = "u";
+                        yf = "e";
+                    }
+                    if (pinYin.endsWith("ui")) {
+                        yf = "u";
+                        yw = "i";
+                    }
+                    if (pinYin.endsWith("uo")) {
+                        yt = "u";
+                        yf = "o";
+                    }
+                    if (pinYin.endsWith("ve")) {
+                        yt = "v";
+                        yf = "e";
+                    }
+                } else if (pinYin.length() == 1) {
+                    if (shengMuList.contains(pinYin)) {
+                        sm = pinYin;
+                    }
+                    if (yunMuList.contains(pinYin)) {
+                        yf = pinYin;
+                    }
+                    if (pinYin.endsWith("n")) {
+                        sm = "";
+                        yw = "n";
+                    }
+                    if (pinYin.endsWith("m")) {
+                        sm = "";
+                        yw = "m";
+                    }
+                    if (pinYin.endsWith("o")) {
+                        yf = "";
+                        yw = "o";
+                    }
+                }
+                shengMu = TextUtils.connectStr(shengMu, sm);
+                yunTou = TextUtils.connectStr(yunTou, yt);
+                yunFu = TextUtils.connectStr(yunFu, yf);
+                yunWei = TextUtils.connectStr(yunWei, yw);
+                if (!pinYin.equals(sm + yt + yf + yw)) {
+                    System.err.println(word + "," + pinYin + "," + sm + "," + yt + "," + yf + "," + yw);
+                    return new Word("");
+                }
             }
 
 
@@ -258,7 +432,10 @@ public class DictMain {
                 kxOtherStork = Integer.parseInt(mat.group(2));
             }
             if (kxAllStork > 0) {
-                return new Word(word, jt, ft, cc1, cc2, tc, ty, py, tone, pyt, duoYin, kxWord, wordSet, radical, kxAllStork, kxOtherStork);
+                return new Word(word, jt, ft, cc1, cc2, tc, ty,
+                        py, tone, pyt, duoYin,
+                        shengMu, yunTou, yunFu, yunWei,
+                        kxWord, wordSet, radical, kxAllStork, kxOtherStork);
             }
 
             if (!TextUtils.isEmpty(kxWord)) {
@@ -267,7 +444,10 @@ public class DictMain {
                     kxWord = kxStork.getKxWord();
                     kxAllStork = kxStork.getAllStork();
                     kxOtherStork = kxStork.getOtherStork();
-                    return new Word(word, jt, ft, cc1, cc2, tc, ty, py, tone, pyt, duoYin, kxWord, wordSet, radical, kxAllStork, kxOtherStork);
+                    return new Word(word, jt, ft, cc1, cc2, tc, ty,
+                            py, tone, pyt, duoYin,
+                            shengMu, yunTou, yunFu, yunWei,
+                            kxWord, wordSet, radical, kxAllStork, kxOtherStork);
                 }
             }
 
