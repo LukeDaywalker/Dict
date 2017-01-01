@@ -4,7 +4,9 @@
 build/
 dict/pages/
 dict/pagesBm8/
-.DS_Store/
+dict/pagesMingZi7/
 .DS_Store
+.DS_Store?
+.DS_Store/
 __MACOSX/
 

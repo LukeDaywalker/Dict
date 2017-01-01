@@ -1,4 +1,4 @@
-package com.bm8.dict;
+package com.mingzi7.dict;
 
 import com.util.TextUtils;
 import org.sqlite.SQLiteException;
@@ -15,11 +15,13 @@ import java.util.regex.Pattern;
  *
  * @author siqi
  */
-public class Bm8DictMain {
+public class MingZi7DictMain {
     /**
      * 网页保存路径
      */
-    public static final String SAVEPATH = String.format("dict%spagesBm8%s", File.separatorChar, File.separatorChar);
+    public static final String SAVEPATH = String.format("dict%spagesMingZi7%s", File.separatorChar, File.separatorChar);
+
+    public static final String CHARSET_NAME = "UTF-8";
     /**
      * 下载的汉字网页名称
      */
@@ -65,7 +67,7 @@ public class Bm8DictMain {
 
         for (int i = UNICODE_MIN; i <= UNICODE_MAX; i++) {
             String word = new String(Character.toChars(i));
-            FiveElements fiveElements = getFiveElementsFromWebpageFile(word, String.format(FILEPATH, i));
+            FiveElements fiveElements = getPinYinFromWebpageFile(word, String.format(FILEPATH, i));
             if (fiveElements == null) {
                 continue;
             }
@@ -82,7 +84,7 @@ public class Bm8DictMain {
                 System.err.println(str);
             }
         }
-
+//
         saveFiveElements(mFiveElementList);
 
     }
@@ -99,15 +101,18 @@ public class Bm8DictMain {
 
             Statement stat = conn.createStatement();
 
-            stat.executeUpdate("create table IF NOT EXISTS  five_elements (word  VARCHAR UNIQUE,  isSurname INTEGER,  fiveElements  VARCHAR, goodOrIll  VARCHAR);");
+            stat.executeUpdate("create table IF NOT EXISTS  five_elements_2 (word  VARCHAR UNIQUE,  triWord VARCHAR,fiveElements VARCHAR,storks INTEGER,triStorks INTEGER,kxStorks INTEGER,pingYin VARCHAR);");
             PreparedStatement prep = conn.prepareStatement(
-                    "replace into five_elements values (?, ?, ?, ?);");
+                    "replace into five_elements_2 values (?,?,?,?,?,?,?);");
 
             for (FiveElements word : fiveElementList) {
                 prep.setString(1, word.getWord());
-                prep.setInt(2, word.getIsSurname());
+                prep.setString(2, word.getTriWord());
                 prep.setString(3, word.getFiveElements());
-                prep.setString(4, word.getGoodOrIll());
+                prep.setInt(4, word.getStorks());
+                prep.setInt(5, word.getTriStorks());
+                prep.setInt(6, word.getKxStorks());
+                prep.setString(7, word.getPingYin());
                 prep.addBatch();
             }
 
@@ -136,13 +141,13 @@ public class Bm8DictMain {
      * @param file
      * @return
      */
-    private static FiveElements getFiveElementsFromWebpageFile(String word, String file) {
+    private static FiveElements getPinYinFromWebpageFile(String word, String file) {
         try {
 
             char[] buff = new char[(int) new File(file).length()];
 
             File f = new File(file);
-            InputStreamReader read = new InputStreamReader(new FileInputStream(f), "GBK");
+            InputStreamReader read = new InputStreamReader(new FileInputStream(f), CHARSET_NAME);
             BufferedReader reader = new BufferedReader(read);
 
             reader.read(buff);
@@ -150,17 +155,26 @@ public class Bm8DictMain {
 
             String content = new String(buff);
 
-            int isSurname = 0;//是否是姓氏
-            String fiveElements = "";//五行
-            String goodOrIll = "";//凶吉
-            Matcher mat = Pattern.compile("<td>拼音：[\\s\\S]*五行属性</strong>：(.)</td>[\\s\\S]*<td>吉凶：(.)</td>",
+            String simWord="";
+            String triWord="";
+            String fiveElements="";//五行
+            int storks=0;//简体笔画
+            int triStorks=0;//繁体笔画
+            int kxStorks=0;//康熙笔画
+            String pingYin="";//拼音
+
+            //<ul><li>龙</li><li>龍</li><li class="lz1">火</li><li>5</li><li>16</li><li>16</li><li>lóng</li></ul>
+            Matcher mat = Pattern.compile("<ul><li>(.)</li><li>(.)</li><li class=\"lz1\">(.)</li><li>(\\d{1,2})</li><li>(\\d{1,2})</li><li>(\\d{1,2})</li><li>([\\s\\S]*)</li></ul>",
                     Pattern.CASE_INSENSITIVE).matcher(content);
             if (mat.find()) {
-                String info = mat.group(0);
-                isSurname = info.contains("(姓氏)") ? 1 : 0;
-                fiveElements = mat.group(1);
-                goodOrIll = mat.group(2);
-                return new FiveElements(word, isSurname, fiveElements, goodOrIll);
+                simWord = mat.group(1);
+                triWord = mat.group(2);
+                fiveElements = mat.group(3);
+                storks = Integer.parseInt(mat.group(4)) ;
+                triStorks = Integer.parseInt(mat.group(5));
+                kxStorks = Integer.parseInt(mat.group(6));
+                pingYin = mat.group(7);
+                return new FiveElements(simWord,triWord,fiveElements,storks,triStorks,kxStorks,pingYin);
             }
         } catch (FileNotFoundException e) {
 //            e.printStackTrace();
